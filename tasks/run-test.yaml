@@ -1,0 +1,105 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  creationTimestamp: '2025-02-02T13:51:52Z'
+  generation: 1
+  managedFields:
+    - apiVersion: tekton.dev/v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:spec':
+          .: {}
+          'f:params': {}
+          'f:steps': {}
+          'f:workspaces': {}
+      manager: Mozilla
+      operation: Update
+      time: '2025-02-02T13:51:52Z'
+  name: rcar-s4-test-test
+  namespace: demo
+  resourceVersion: '19313534'
+  uid: 2e6fda4f-abd0-4c47-b8e9-8588d7be97cf
+spec:
+  params:
+    - default: ''
+      description: TMT plan name pattern
+      name: plan-name
+      type: string
+    - default: ''
+      description: TMT test name
+      name: test-name
+      type: string
+    - default: rcar_s4
+      description: Hardware target name
+      name: hw-target
+      type: string
+    - description: The Lease ID to use
+      name: jmp-lease-id
+      type: string
+    - description: Test run ID
+      name: testRunId
+      type: string
+    - default: 'https://gitlab.com/bzlotnik/simple-tmt.git'
+      description: Tests Repository URL
+      name: testsRepo
+      type: string
+    - description: Jumpstarter client name to use
+      name: client-name
+      type: string
+  steps:
+    - computeResources: {}
+      image: 'quay.io/bzlotnik/js-tmt:latest'
+      name: run-test
+      onError: continue
+      script: |
+        #!/usr/bin/env bash
+        set -uxo pipefail
+
+        jmp client use-config $(params.client-name)
+        export JMP_LEASE=$(params.jmp-lease-id)
+
+        cd /app/rcar-s4-test
+
+        git -c http.sslVerify=false clone $(params.testsRepo) /app/tests
+        ls -l /app/tests
+
+        PYTEST_ARGS="-s --verbose test_tmt.py --hw-target=$(params.hw-target) --workdir-root=/var/tmp/tmt --config=$(params.client-name).yaml --run-id=$(params.testRunId)"
+
+        if [ ! -z "$(params.plan-name)" ]; then
+          PYTEST_ARGS="$PYTEST_ARGS --plan-name=$(params.plan-name)"
+        fi
+
+        if [ ! -z "$(params.test-name)" ]; then
+          PYTEST_ARGS="$PYTEST_ARGS --test-name=$(params.test-name)"
+        fi
+
+        python3 -m pytest $PYTEST_ARGS
+
+        mkdir -p /workspace/test-results/$(params.testRunId)/
+
+        tmt run \
+          --id $(params.testRunId) \
+          report \
+          --how junit \
+          --file /workspace/test-results/$(params.testRunId)/junit.xml
+
+        echo "copying artifacts from /var/tmp/tmt/$(params.testRunId) to /workspace/test-results/$(params.testRunId)/"
+        mkdir -p /workspace/test-results/$(params.testRunId)/artifacts
+        cp -r /var/tmp/tmt/$(params.testRunId)/* /workspace/test-results/$(params.testRunId)/artifacts/
+        cat > /workspace/test-results/$(params.testRunId)/summary_$(params.testRunId).txt << EOF
+        Test Run Summary
+        ===============
+        Run ID: $(params.testRunId)
+        Plan: $(params.plan-name)
+        Test: $(params.test-name)
+        Target: $(params.hw-target)
+        Date: $(date)
+        EOF
+  workspaces:
+    - description: Workspace to mount the Jumpstarter client file
+      mountPath: /root/.config/jumpstarter/clients
+      name: jumpstarter-client-secret
+      readOnly: true
+    - description: Workspace for TMT test results
+      mountPath: /workspace/test-results
+      name: test-results
