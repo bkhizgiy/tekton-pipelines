@@ -1,0 +1,54 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  creationTimestamp: '2025-02-02T13:00:06Z'
+  generation: 2
+  managedFields:
+    - apiVersion: tekton.dev/v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:spec':
+          .: {}
+          'f:params': {}
+          'f:steps': {}
+          'f:workspaces': {}
+      manager: Mozilla
+      operation: Update
+      time: '2025-02-02T13:45:17Z'
+  name: jumpstarter-provision-board-test
+  namespace: demo
+  resourceVersion: '19310383'
+  uid: 40f7b172-081b-460d-ba37-a64e678a5f9e
+spec:
+  params:
+    - name: jmp-lease-id
+      type: string
+    - description: Jumpstarter client name to use
+      name: client-name
+      type: string
+  steps:
+    - computeResources: {}
+      env:
+        - name: JUMPSTARTER_GRPC_INSECURE
+          value: '1'
+      image: 'quay.io/bzlotnik/rcar-driver:latest'
+      name: provision-board
+      script: |
+        #!/usr/bin/env bash
+        set -ex
+        set -o pipefail
+
+        jmp client use-config $(params.client-name)
+        export JMP_LEASE=$(params.jmp-lease-id)
+
+        jmp client shell -n "$JMP_LEASE" $(params.client-name) << 'ENDCOMMANDS'
+        j rcar flash \
+          --kernel Image \
+          --initramfs initramfs-debug.img \
+          --dtb r8a779f0-spider.dtb \
+          --os-image target.gz
+        ENDCOMMANDS
+  workspaces:
+    - mountPath: /root/.config/jumpstarter/clients
+      name: jumpstarter-client-secret
+      readOnly: true
