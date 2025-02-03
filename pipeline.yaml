@@ -1,0 +1,135 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"tekton.dev/v1","kind":"Pipeline","metadata":{"annotations":{},"name":"rcar-s4-test-pipeline","namespace":"demo"},"spec":{"finally":[{"name":"release-lease","params":[{"name":"jmp-lease-id","value":"$(tasks.get-lease.results.jmp-lease-id)"},{"name":"client-name","value":"$(params.client-name)"}],"taskRef":{"kind":"Task","name":"jumpstarter-release-lease-test"},"workspaces":[{"name":"jumpstarter-client-secret","workspace":"jumpstarter-client-secret"}]}],"params":[{"default":"","name":"plan-name","type":"string"},{"default":"","name":"test-name","type":"string"},{"default":"rcar_s4","name":"hw-target","type":"string"},{"description":"Unique test run identifier","name":"testRunId","type":"string"},{"default":"https://gitlab.com/bzlotnik/simple-tmt.git","description":"Tests Repository URL","name":"testsRepo","type":"string"},{"default":"rcar-s4","description":"Board to use","name":"board","type":"string"},{"default":"default","description":"Jumpstarter client name to use","name":"client-name","type":"string"},{"default":"false","description":"Skip board provisioning","name":"skipProvisioning","type":"string"}],"tasks":[{"name":"get-lease","params":[{"name":"client-name","value":"$(params.client-name)"},{"name":"exporter-labels","value":["board=$(params.board)"]}],"taskRef":{"kind":"Task","name":"jumpstarter-get-lease-test"},"workspaces":[{"name":"jumpstarter-client-secret","workspace":"jumpstarter-client-secret"}]},{"name":"provision-board","params":[{"name":"client-name","value":"$(params.client-name)"},{"name":"jmp-lease-id","value":"$(tasks.get-lease.results.jmp-lease-id)"}],"runAfter":["get-lease"],"taskRef":{"kind":"Task","name":"jumpstarter-provision-board-test"},"when":[{"input":"$(params.skipProvisioning)","operator":"notin","values":["true"]}],"workspaces":[{"name":"jumpstarter-client-secret","workspace":"jumpstarter-client-secret"}]},{"name":"run-test","params":[{"name":"plan-name","value":"$(params.plan-name)"},{"name":"test-name","value":"$(params.test-name)"},{"name":"hw-target","value":"$(params.hw-target)"},{"name":"jmp-lease-id","value":"$(tasks.get-lease.results.jmp-lease-id)"},{"name":"testRunId","value":"$(params.testRunId)"},{"name":"testsRepo","value":"$(params.testsRepo)"},{"name":"client-name","value":"$(params.client-name)"}],"runAfter":["get-lease","provision-board"],"taskRef":{"kind":"Task","name":"rcar-s4-test-test"},"workspaces":[{"name":"jumpstarter-client-secret","workspace":"jumpstarter-client-secret"},{"name":"test-results","workspace":"test-results"}]}],"workspaces":[{"name":"jumpstarter-client-secret"},{"name":"test-results"}]}}
+  creationTimestamp: '2025-02-02T12:06:30Z'
+  generation: 7
+  managedFields:
+    - apiVersion: tekton.dev/v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:kubectl.kubernetes.io/last-applied-configuration': {}
+        'f:spec':
+          .: {}
+          'f:finally': {}
+          'f:params': {}
+          'f:tasks': {}
+          'f:workspaces': {}
+      manager: Mozilla
+      operation: Update
+      time: '2025-02-02T13:52:52Z'
+  name: rcar-s4-test-pipeline-test
+  namespace: demo
+  resourceVersion: '19314052'
+  uid: a22008f8-ea0b-4fd9-a4f7-a00c3bfd962f
+spec:
+  finally:
+    - name: release-lease
+      params:
+        - name: jmp-lease-id
+          value: $(tasks.get-lease.results.jmp-lease-id)
+        - name: client-name
+          value: $(params.client-name)
+      taskRef:
+        kind: Task
+        name: jumpstarter-release-lease-test
+      workspaces:
+        - name: jumpstarter-client-secret
+          workspace: jumpstarter-client-secret
+  params:
+    - default: ''
+      name: plan-name
+      type: string
+    - default: ''
+      name: test-name
+      type: string
+    - default: rcar_s4
+      name: hw-target
+      type: string
+    - description: Unique test run identifier
+      name: testRunId
+      type: string
+    - default: 'https://gitlab.com/bzlotnik/simple-tmt.git'
+      description: Tests Repository URL
+      name: testsRepo
+      type: string
+    - default: rcar-s4
+      description: Board to use
+      name: board
+      type: string
+    - default: default
+      description: Jumpstarter client name to use
+      name: client-name
+      type: string
+    - default: 'false'
+      description: Skip board provisioning
+      name: skipProvisioning
+      type: string
+  tasks:
+    - name: get-lease
+      params:
+        - name: client-name
+          value: $(params.client-name)
+        - name: exporter-labels
+          value:
+            - board=$(params.board)
+      taskRef:
+        kind: Task
+        name: jumpstarter-get-lease-test
+      workspaces:
+        - name: jumpstarter-client-secret
+          workspace: jumpstarter-client-secret
+    - name: provision-board
+      params:
+        - name: client-name
+          value: $(params.client-name)
+        - name: jmp-lease-id
+          value: $(tasks.get-lease.results.jmp-lease-id)
+      runAfter:
+        - get-lease
+      taskRef:
+        kind: Task
+        name: jumpstarter-provision-board-test
+      when:
+        - input: $(params.skipProvisioning)
+          operator: notin
+          values:
+            - 'true'
+      workspaces:
+        - name: jumpstarter-client-secret
+          workspace: jumpstarter-client-secret
+    - name: run-test
+      params:
+        - name: plan-name
+          value: $(params.plan-name)
+        - name: test-name
+          value: $(params.test-name)
+        - name: hw-target
+          value: $(params.hw-target)
+        - name: jmp-lease-id
+          value: $(tasks.get-lease.results.jmp-lease-id)
+        - name: testRunId
+          value: $(params.testRunId)
+        - name: testsRepo
+          value: $(params.testsRepo)
+        - name: client-name
+          value: $(params.client-name)
+      runAfter:
+        - get-lease
+        - provision-board
+      taskRef:
+        kind: Task
+        name: rcar-s4-test-test
+      workspaces:
+        - name: jumpstarter-client-secret
+          workspace: jumpstarter-client-secret
+        - name: test-results
+          workspace: test-results
+  workspaces:
+    - name: jumpstarter-client-secret
+    - name: test-results
